@@ -5,7 +5,9 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688.svg)](https://fastapi.tiangolo.com)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](Dockerfile)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Render-009688.svg)](https://docuvault-ai-ah83.onrender.com/)
 
+**Live Service:** [https://docuvault-ai-ah83.onrender.com/](https://docuvault-ai-ah83.onrender.com/) &nbsp;|&nbsp; **API Docs:** [https://docuvault-ai-ah83.onrender.com/docs](https://docuvault-ai-ah83.onrender.com/docs)
 
 A lightweight, decoupled Retrieval-Augmented Generation (RAG) microservice built with **FastAPI**, **in-memory FAISS** vector indexing, and **local ONNX embeddings**, engineered for memory-constrained cloud environments (sub-256 MB RAM) with grounded LLM question answering and automated ReportLab PDF brief export.
 
