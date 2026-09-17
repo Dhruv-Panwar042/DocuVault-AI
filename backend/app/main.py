@@ -46,7 +46,8 @@ def health():
     """Global root health check for container liveness probe."""
     return {
         "status": "healthy",
-        "service": "DocuMind AI",
+        "service": "DocuVault AI",
+
         "version": "2.0.0",
         "is_indexed": rag_service.is_indexed,
         "embedding_model": settings.EMBEDDING_MODEL,
@@ -64,12 +65,13 @@ if FRONTEND_DIR.exists():
 
 @app.get("/", tags=["UI"])
 def serve_index():
-    """Serves the DocuMind AI modern light dashboard."""
+    """Serves the DocuVault AI modern light dashboard."""
     if INDEX_HTML.exists():
         return FileResponse(str(INDEX_HTML))
     return JSONResponse(
         content={
-            "service": "DocuMind AI API",
+            "service": "DocuVault AI API",
+
             "message": "Frontend index.html is being prepared.",
             "docs": "/docs",
         }

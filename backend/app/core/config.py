@@ -1,10 +1,11 @@
-﻿import os
+import os
 from typing import List
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "DocuMind AI"
+    PROJECT_NAME: str = "DocuVault AI"
+
     VERSION: str = "2.0.0"
     API_V1_STR: str = "/api/v1"
 

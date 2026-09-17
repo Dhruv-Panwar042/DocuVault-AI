@@ -1,4 +1,5 @@
-# Multi-stage production container for DocuMind AI RAG Microservice
+# Multi-stage production container for DocuVault AI RAG Microservice
+
 FROM python:3.11-slim AS runner
 
 # Set environment variables

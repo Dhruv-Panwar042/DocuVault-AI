@@ -25,7 +25,7 @@ def test_health_endpoints(client):
     assert res.status_code == 200
     data = res.json()
     assert data["status"] == "healthy"
-    assert data["service"] == "DocuMind AI"
+    assert data["service"] == "DocuVault AI"
 
     res_v1 = client.get("/api/v1/health")
     assert res_v1.status_code == 200
@@ -35,8 +35,9 @@ def test_health_endpoints(client):
 def test_frontend_index_served(client):
     res = client.get("/")
     assert res.status_code == 200
-    assert "DocuMind AI" in res.text
+    assert "DocuVault AI" in res.text
     assert "Vector Chunk Inspector" in res.text
+
 
 
 

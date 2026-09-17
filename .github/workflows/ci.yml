@@ -1,4 +1,5 @@
-name: DocuMind AI CI
+name: DocuVault AI CI
+
 
 on:
   push:

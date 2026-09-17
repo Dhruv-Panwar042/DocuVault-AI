@@ -1,4 +1,4 @@
-﻿from typing import Optional, List, Dict
+from typing import Optional, List, Dict
 import google.genai as genai
 from app.core.config import settings
 
@@ -51,7 +51,8 @@ class GeminiRAGService:
                 history_lines.append(f"{role}: {turn.get('content', '')}")
         history_str = "\n".join(history_lines) if history_lines else "None"
 
-        prompt = f"""You are DocuMind AI, an intelligent, objective multi-document analysis assistant.
+        prompt = f"""You are DocuVault AI, an intelligent, objective multi-document analysis assistant.
+
 
 Instructions:
 1. Answer the user's question accurately using ONLY the provided Context and Conversation History.

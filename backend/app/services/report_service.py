@@ -46,13 +46,14 @@ class NumberedCanvas(canvas.Canvas):
         self.setLineWidth(0.75)
         self.line(40, letter[1] - 38, letter[0] - 40, letter[1] - 38)
 
-        self.drawString(40, letter[1] - 32, "DocuMind AI — Executive Document Intelligence Brief")
+        self.drawString(40, letter[1] - 32, "DocuVault AI — Executive Document Intelligence Brief")
         gen_time = datetime.datetime.now().strftime("%B %d, %Y")
         self.drawRightString(letter[0] - 40, letter[1] - 32, gen_time)
 
         # Footer rule & page numbering
         self.line(40, 42, letter[0] - 40, 42)
-        self.drawString(40, 30, "Confidential • Generated via DocuMind AI Retrieval-Augmented Generation Service")
+        self.drawString(40, 30, "Confidential • Generated via DocuVault AI Retrieval-Augmented Generation Service")
+
         self.drawRightString(letter[0] - 40, 30, f"Page {self._pageNumber} of {page_count}")
         self.restoreState()
 
@@ -141,7 +142,8 @@ class ReportService:
         story = []
 
         # Document Header
-        story.append(Paragraph("DocuMind AI: Executive Intelligence Brief", title_style))
+        story.append(Paragraph("DocuVault AI: Executive Intelligence Brief", title_style))
+
         story.append(
             Paragraph(
                 f"Multi-Document Semantic Synthesis • Generated on {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",

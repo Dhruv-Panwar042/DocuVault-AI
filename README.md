@@ -1,10 +1,11 @@
-# DocuMind AI: Grounded Multi-Document RAG Microservice
+# DocuVault AI: Grounded Multi-Document RAG Microservice
 
-[![DocuMind AI CI](https://github.com/Dhruv-Panwar042/rag-chatbot-gemini/actions/workflows/ci.yml/badge.svg)](https://github.com/Dhruv-Panwar042/rag-chatbot-gemini/actions/workflows/ci.yml)
+[![DocuVault AI CI](https://github.com/Dhruv-Panwar042/DocuVault-AI/actions/workflows/ci.yml/badge.svg)](https://github.com/Dhruv-Panwar042/DocuVault-AI/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688.svg)](https://fastapi.tiangolo.com)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](Dockerfile)
+
 
 A production-grade, decoupled Retrieval-Augmented Generation (RAG) microservice that enables grounded multi-document question answering, interactive vector chunk inspection, and executive briefing synthesis with automated ReportLab PDF export.
 
@@ -115,8 +116,9 @@ Interactive OpenAPI documentation is available at `/docs` (Swagger UI) and `/red
 
 ### 2. Clone and Setup
 ```bash
-git clone https://github.com/Dhruv-Panwar042/rag-chatbot-gemini.git
-cd rag-chatbot-gemini
+git clone https://github.com/Dhruv-Panwar042/DocuVault-AI.git
+cd DocuVault-AI
+
 
 # Create virtual environment
 python -m venv venv
@@ -156,7 +158,7 @@ Open your browser at `http://localhost:8000`.
 
 ## 🧪 Automated Testing
 
-DocuMind AI includes an automated unit and integration test suite covering health probes, validation rules, in-memory PDF chunking, chunk inspector pagination, and ReportLab PDF binary export:
+DocuVault AI includes an automated unit and integration test suite covering health probes, validation rules, in-memory PDF chunking, chunk inspector pagination, and ReportLab PDF binary export:
 
 ```bash
 # Run pytest
@@ -171,14 +173,14 @@ The project includes a production-ready single-container Dockerfile that pre-cac
 
 ### Build and Run Locally with Docker
 ```bash
-docker build -t documind-ai .
-docker run -p 8000:8000 -e GOOGLE_API_KEY="your_key_here" documind-ai
+docker build -t docuvault-ai .
+docker run -p 8000:8000 -e GOOGLE_API_KEY="your_key_here" docuvault-ai
 ```
 
 ### Deploy to Render (Web Service)
 1. Fork or push this repository to GitHub.
 2. Log into [Render Dashboard](https://dashboard.render.com/) and click **New + $\rightarrow$ Web Service**.
-3. Select this repository: `rag-chatbot-gemini`.
+3. Select this repository: `DocuVault-AI`.
 4. Configure service settings:
    - **Environment**: `Docker`
    - **Branch**: `main`
@@ -208,7 +210,8 @@ docker run -p 8000:8000 -e GOOGLE_API_KEY="your_key_here" documind-ai
 
 **Dhruv Panwar**  
 - GitHub: [@Dhruv-Panwar042](https://github.com/Dhruv-Panwar042)  
-- Project Repository: [rag-chatbot-gemini](https://github.com/Dhruv-Panwar042/rag-chatbot-gemini)  
+- Project Repository: [DocuVault-AI](https://github.com/Dhruv-Panwar042/DocuVault-AI)  
+
 
 ---
 

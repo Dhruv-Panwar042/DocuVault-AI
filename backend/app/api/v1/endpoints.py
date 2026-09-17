@@ -24,7 +24,8 @@ def health_check():
     """Liveness probe returning service and index state."""
     return {
         "status": "healthy",
-        "service": "DocuMind AI RAG Engine",
+        "service": "DocuVault AI RAG Engine",
+
         "version": "2.0.0",
         "is_indexed": rag_service.is_indexed,
         "embedding_model": settings.EMBEDDING_MODEL,
@@ -207,7 +208,8 @@ def export_executive_pdf(req: ExportPdfRequest):
             content=pdf_bytes,
             media_type="application/pdf",
             headers={
-                "Content-Disposition": "attachment; filename=DocuMind_Intelligence_Brief.pdf",
+                "Content-Disposition": "attachment; filename=DocuVault_Intelligence_Brief.pdf",
+
                 "Access-Control-Expose-Headers": "Content-Disposition",
             },
         )
