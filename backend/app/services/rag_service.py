@@ -33,9 +33,10 @@ class RAGService:
             self._embeddings = HuggingFaceEmbeddings(
                 model_name=settings.EMBEDDING_MODEL,
                 model_kwargs={"device": "cpu"},
-                encode_kwargs={"normalize_embeddings": True},
+                encode_kwargs={"normalize_embeddings": True, "batch_size": 16},
             )
         return self._embeddings
+
 
 
     @property

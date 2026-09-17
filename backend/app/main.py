@@ -6,9 +6,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 
+from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.api.v1.endpoints import router as v1_router
 from app.services.rag_service import rag_service
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Pre-warm local embedding model on startup so user uploads don't hit cold start timeouts
+    try:
+        print("Pre-warming local sentence-transformers embedding model in RAM...")
+        _ = rag_service.embeddings
+        print("Embedding model ready.")
+    except Exception as e:
+        print(f"Warning: Failed to pre-warm embeddings during lifespan: {e}")
+    yield
+
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -16,7 +30,9 @@ app = FastAPI(
     version="2.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
+
 
 # CORS middleware to support standalone web frontends or decoupled microfrontends
 app.add_middleware(

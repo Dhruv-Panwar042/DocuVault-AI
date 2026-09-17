@@ -388,6 +388,32 @@
     const CHUNK_PAGE_SIZE = 20;
     let currentExecutiveSummary = "";
 
+    // Robust JSON fetcher that cleanly handles HTML errors (502/504/timeout) from cloud hosts
+    async function safeFetchJson(url, options = {}) {
+      const res = await fetch(url, options);
+      const contentType = res.headers.get("content-type") || "";
+
+      if (!contentType.includes("application/json")) {
+        const text = await res.text();
+        if (res.status === 502 || res.status === 503 || text.includes("502") || text.includes("Bad Gateway")) {
+          throw new Error("Render cloud host is waking up or deploying. Please wait 10-15 seconds and retry.");
+        } else if (res.status === 504 || text.includes("504") || text.includes("Gateway Timeout")) {
+          throw new Error("Upload timed out on the cloud host. Try uploading a smaller PDF or fewer pages.");
+        } else if (res.status === 413) {
+          throw new Error("Document is too large for the cloud host free tier. Please upload a smaller PDF.");
+        } else {
+          throw new Error(`Server returned HTTP ${res.status}: ${res.statusText || "Service Unavailable"}`);
+        }
+      }
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || `Request failed with HTTP ${res.status}`);
+      }
+      return data;
+    }
+
+
     // Initialize Lucide icons
     document.addEventListener("DOMContentLoaded", () => {
       lucide.createIcons();
@@ -512,9 +538,8 @@
     // Refresh Index Status
     async function refreshIndexStatus() {
       try {
-        const res = await fetch(`${API_BASE}/api/v1/status`);
-        if (!res.ok) return;
-        const data = await res.json();
+        const data = await safeFetchJson(`${API_BASE}/api/v1/status`);
+
 
         document.getElementById("statDocs").textContent = data.document_count;
         document.getElementById("statPages").textContent = data.total_pages;
@@ -549,15 +574,11 @@
       const startTime = performance.now();
 
       try {
-        const res = await fetch(`${API_BASE}/api/v1/upload`, {
+        const data = await safeFetchJson(`${API_BASE}/api/v1/upload`, {
           method: "POST",
           body: formData,
         });
 
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.detail || "Failed to process files");
-        }
 
         const elapsed = Math.round(performance.now() - startTime);
         showToast(`Indexed ${data.total_chunks} vector chunks in ${data.process_time_ms}ms!`, "success");
@@ -635,16 +656,12 @@
           top_k: topK,
         };
 
-        const res = await fetch(`${API_BASE}/api/v1/query`, {
+        const data = await safeFetchJson(`${API_BASE}/api/v1/query`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
 
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.detail || "Query failed");
-        }
 
         // Replace loading indicator with real response
         removeLoadingBubble(loadingId);
@@ -817,9 +834,8 @@
     // TAB 2: CHUNK INSPECTOR LOGIC
     async function loadChunks(offset = 0) {
       try {
-        const res = await fetch(`${API_BASE}/api/v1/chunks?limit=${CHUNK_PAGE_SIZE}&offset=${offset}`);
-        if (!res.ok) return;
-        const data = await res.json();
+        const data = await safeFetchJson(`${API_BASE}/api/v1/chunks?limit=${CHUNK_PAGE_SIZE}&offset=${offset}`);
+
 
         allChunks = data.chunks;
         currentChunkOffset = offset;
@@ -898,11 +914,9 @@
       genBtn.innerHTML = `<span class="w-3 h-3 rounded-full bg-white animate-spin border-2 border-white border-t-transparent inline-block mr-1"></span> Synthesizing...`;
 
       try {
-        const res = await fetch(`${API_BASE}/api/v1/summarize`, { method: "POST" });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || "Failed to generate summary");
-
+        const data = await safeFetchJson(`${API_BASE}/api/v1/summarize`, { method: "POST" });
         currentExecutiveSummary = data.summary;
+
         emptyPrompt.classList.add("hidden");
         textBody.classList.remove("hidden");
         textBody.innerHTML = formatResponseText(data.summary);
@@ -934,9 +948,15 @@
         });
 
         if (!res.ok) {
-          const errData = await res.json();
-          throw new Error(errData.detail || "PDF generation failed");
+          const contentType = res.headers.get("content-type") || "";
+          if (contentType.includes("application/json")) {
+            const errData = await res.json();
+            throw new Error(errData.detail || "PDF generation failed");
+          } else {
+            throw new Error(`Server returned HTTP ${res.status}: ${res.statusText || "Unable to generate PDF"}`);
+          }
         }
+
 
         const blob = await res.blob();
         const downloadUrl = window.URL.createObjectURL(blob);
@@ -964,10 +984,10 @@
       if (!confirm("Are you sure you want to clear all indexed vectors and document memory?")) return;
 
       try {
-        const res = await fetch(`${API_BASE}/api/v1/clear`, { method: "DELETE" });
-        if (!res.ok) throw new Error("Failed to clear index");
+        await safeFetchJson(`${API_BASE}/api/v1/clear`, { method: "DELETE" });
 
         showToast("Corpus and vector index cleared.", "info");
+
         await refreshIndexStatus();
         chatTurns = [];
         allChunks = [];
