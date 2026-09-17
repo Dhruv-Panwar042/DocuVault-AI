@@ -15,7 +15,7 @@ faiss-cpu>=1.8.0
 fastembed>=0.4.0
 pypdf>=4.2.0
 
-# LLM Reasoning & Fallback Fleet
+# LLM Reasoning & Fallback Routing
 google-genai>=0.1.1
 
 # Executive Intelligence PDF Brief Generation
