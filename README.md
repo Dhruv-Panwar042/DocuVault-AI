@@ -15,10 +15,10 @@ Built with **FastAPI**, **LangChain**, **FAISS-CPU**, local **`all-MiniLM-L6-v2`
 
 ## 🎯 Key Engineering Highlights
 
-1. **Zero Embedding API Cost (Local CPU Inference)**:
-   - Uses `sentence-transformers/all-MiniLM-L6-v2` loaded locally via a singleton on CPU.
+1. **Zero Embedding API Cost (Local CPU ONNX Inference)**:
+   - Uses `fastembed` ONNX Runtime (`sentence-transformers/all-MiniLM-L6-v2`) loaded locally on CPU.
    - Embeds 384-dimensional dense vectors with normalized cosine similarity without incurring commercial embedding API charges or hitting remote rate limits.
-   - Memory footprint is constrained to ~80 MB RAM, fitting comfortably within free cloud container limits (e.g., Render 512 MB).
+   - Highly optimized memory footprint (~120 MB RAM vs 500+ MB with PyTorch), fitting comfortably within free cloud container limits (e.g., Render 512 MB).
 
 2. **In-Memory RAM Document Ingestion**:
    - Parses multi-file PDFs directly from memory byte buffers (`io.BytesIO`) using `pypdf`, eliminating slow disk I/O and file locking pitfalls on Windows and containerized environments.

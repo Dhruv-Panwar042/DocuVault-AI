@@ -8,6 +8,7 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app/backend \
     TRANSFORMERS_CACHE=/app/.cache \
     HF_HOME=/app/.cache \
+    FASTEMBED_CACHE_PATH=/app/.cache \
     OMP_NUM_THREADS=1 \
     MKL_NUM_THREADS=1 \
     OPENBLAS_NUM_THREADS=1 \
@@ -22,14 +23,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Install PyTorch CPU-only first to prevent downloading heavy CUDA/GPU binaries (~2.5GB)
+# Install lightweight Python dependencies (FastEmbed ONNX runtime, zero PyTorch memory footprint)
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && \
     pip install --no-cache-dir -r requirements.txt
 
-# Pre-cache local embedding model at build time to eliminate cold-start download latency
-RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')"
+# Pre-cache local ONNX embedding model at build time to eliminate cold-start download latency
+RUN python -c "from fastembed import TextEmbedding; TextEmbedding(model_name='sentence-transformers/all-MiniLM-L6-v2', cache_dir='/app/.cache')"
 
 # Create non-root runtime user for enterprise container security
 RUN useradd -m -u 1000 appuser && \

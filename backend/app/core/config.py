@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     GOOGLE_API_KEY: str = os.getenv("GOOGLE_API_KEY", "")
     GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
-    # Local HuggingFace Embeddings & RAG Hyperparameters
+    # Local ONNX FastEmbed Embeddings & RAG Hyperparameters
     EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
     CHUNK_SIZE: int = 1000
     CHUNK_OVERLAP: int = 200

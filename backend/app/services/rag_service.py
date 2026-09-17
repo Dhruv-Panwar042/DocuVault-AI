@@ -4,7 +4,7 @@ from typing import List, Dict, Tuple, Optional, Any
 from pypdf import PdfReader
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
 from langchain_community.vectorstores import FAISS
 
 from app.core.config import settings
@@ -21,19 +21,18 @@ class RAGService:
         return cls._instance
 
     def _init_service(self):
-        self._embeddings: Optional[HuggingFaceEmbeddings] = None
+        self._embeddings: Optional[FastEmbedEmbeddings] = None
         self._vectorstore: Optional[FAISS] = None
         self._chunks: List[Document] = []
         self._documents_meta: List[Dict[str, Any]] = []
 
     @property
-    def embeddings(self) -> HuggingFaceEmbeddings:
+    def embeddings(self) -> FastEmbedEmbeddings:
         if self._embeddings is None:
-            print(f"Loading local embedding model: {settings.EMBEDDING_MODEL}...")
-            self._embeddings = HuggingFaceEmbeddings(
+            print(f"Loading local ONNX embedding model: {settings.EMBEDDING_MODEL}...")
+            self._embeddings = FastEmbedEmbeddings(
                 model_name=settings.EMBEDDING_MODEL,
-                model_kwargs={"device": "cpu"},
-                encode_kwargs={"normalize_embeddings": True, "batch_size": 16},
+                threads=1,
             )
         return self._embeddings
 
