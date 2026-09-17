@@ -1,10 +1,29 @@
-langchain 
-langchain-community 
-langchain-google-genai 
-langchain-text-splitters 
-google-genai 
-faiss-cpu 
-sentence-transformers 
-streamlit 
-pypdf 
-python-dotenv 
+# DocuMind AI Core Microservice Dependencies
+fastapi>=0.110.0
+uvicorn[standard]>=0.28.0
+python-multipart>=0.0.9
+pydantic>=2.6.0
+pydantic-settings>=2.2.0
+python-dotenv>=1.0.1
+
+# RAG & Semantic Vector Indexing
+langchain>=0.2.0
+langchain-community>=0.2.0
+langchain-text-splitters>=0.2.0
+faiss-cpu>=1.8.0
+sentence-transformers>=3.0.0
+pypdf>=4.2.0
+torch>=2.2.0
+
+# LLM Reasoning & Fallback Fleet
+google-genai>=0.1.1
+
+# Executive Intelligence PDF Brief Generation
+reportlab>=4.1.0
+
+# Testing & Client Tools
+pytest>=8.0.0
+httpx>=0.27.0
+
+# Legacy fallback
+streamlit>=1.35.0

@@ -1,7 +1,33 @@
+# Environments & secrets
 venv/
+.venv/
+env/
 .env
-__pycache__/
-*.pyc
-*.pdf
+.env.*
+!.env.example
 .streamlit/secrets.toml
-*.pdf 
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Operating system & IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Transformers cache
+.cache/
+
+# Large user-uploaded data files (preserve sample.pdf for test suite)
+*.pdf
+!sample.pdf
+

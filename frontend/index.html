@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DocuMind AI — Enterprise Grounded RAG Microservice</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              200: '#c7d2fe',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              800: '#3730a3',
+              900: '#312e81',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    .fade-in { animation: fadeIn 0.25s ease-in-out; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans min-h-screen flex flex-col antialiased">
+
+  <!-- Top Navigation Bar -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <!-- Logo & Subtitle -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-700 via-brand-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
+          <i data-lucide="sparkles" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-lg tracking-tight text-slate-900">DocuMind AI</span>
+            <span class="text-[11px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 border border-brand-200">v2.0</span>
+          </div>
+          <p class="text-xs text-slate-500 font-normal">Grounded RAG Microservice • Local CPU Vector Index</p>
+        </div>
+      </div>
+
+      <!-- Live Metadata Pills & Actions -->
+      <div class="flex items-center gap-3">
+        <!-- Live status -->
+        <div id="statusBadge" class="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-medium">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span id="statusText">System Ready</span>
+        </div>
+
+        <!-- Model Pill -->
+        <div class="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200 text-xs font-mono">
+          <i data-lucide="cpu" class="w-3.5 h-3.5 text-slate-500"></i>
+          <span>all-MiniLM-L6-v2</span>
+        </div>
+
+        <!-- Documentation Link -->
+        <a href="/docs" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition">
+          <i data-lucide="book-open" class="w-3.5 h-3.5"></i>
+          <span>API Docs</span>
+        </a>
+
+        <!-- Reset Button -->
+        <button id="clearBtn" onclick="handleClearIndex()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-rose-600 hover:bg-rose-50 border border-rose-200 transition">
+          <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+          <span>Clear Index</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main App Shell -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full space-y-6">
+
+    <!-- Document Upload & Active Corpus Strip -->
+    <section class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs transition hover:shadow-sm">
+      <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5">
+        
+        <!-- Left: Dropzone & File Queue -->
+        <div class="w-full lg:w-3/5 space-y-3">
+          <div class="flex items-center justify-between">
+            <h2 class="text-sm font-semibold text-slate-900 flex items-center gap-2">
+              <i data-lucide="folder-up" class="w-4 h-4 text-brand-600"></i>
+              Knowledge Base Ingestion
+            </h2>
+            <span class="text-xs text-slate-500">Supports multi-PDF in-memory parsing</span>
+          </div>
+
+          <!-- Drag and drop zone -->
+          <div id="dropzone" class="border-2 border-dashed border-slate-200 hover:border-brand-500 rounded-xl p-4 text-center cursor-pointer transition bg-slate-50/50 hover:bg-brand-50/20 group">
+            <input type="file" id="fileInput" multiple accept=".pdf" class="hidden" />
+            <div class="flex items-center justify-center gap-3 text-slate-600 group-hover:text-brand-700">
+              <div class="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-500 group-hover:text-brand-600 group-hover:border-brand-200 shadow-2xs">
+                <i data-lucide="upload-cloud" class="w-5 h-5"></i>
+              </div>
+              <div class="text-left">
+                <p class="text-xs font-semibold text-slate-800 group-hover:text-brand-700">
+                  Click to browse or drop PDF documents here
+                </p>
+                <p class="text-[11px] text-slate-500">Fast in-memory RAM extraction (no temporary files saved to disk)</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Selected Files List -->
+          <div id="selectedFilesContainer" class="hidden space-y-2">
+            <div id="selectedFilesList" class="flex flex-wrap gap-2"></div>
+            <div class="flex items-center justify-between pt-1">
+              <span id="selectedCountText" class="text-xs text-slate-500">0 files selected</span>
+              <button id="uploadSubmitBtn" onclick="handleUploadSubmit()" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 shadow-sm shadow-brand-500/20 transition disabled:opacity-50">
+                <i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i>
+                <span id="uploadBtnText">Process & Index Chunks</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Active Corpus Status Card -->
+        <div class="w-full lg:w-2/5 border-t lg:border-t-0 lg:border-l border-slate-200 pt-4 lg:pt-0 lg:pl-6">
+          <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Live Corpus Overview</h3>
+          <div class="grid grid-cols-3 gap-3">
+            <div class="bg-slate-50 rounded-xl p-3 border border-slate-200/80">
+              <span class="text-[11px] font-medium text-slate-500">Documents</span>
+              <p id="statDocs" class="text-lg font-bold text-slate-900 mt-0.5">0</p>
+            </div>
+            <div class="bg-slate-50 rounded-xl p-3 border border-slate-200/80">
+              <span class="text-[11px] font-medium text-slate-500">Extracted Pages</span>
+              <p id="statPages" class="text-lg font-bold text-slate-900 mt-0.5">0</p>
+            </div>
+            <div class="bg-slate-50 rounded-xl p-3 border border-slate-200/80">
+              <span class="text-[11px] font-medium text-slate-500">Vector Chunks</span>
+              <p id="statChunks" class="text-lg font-bold text-brand-600 mt-0.5">0</p>
+            </div>
+          </div>
+          <div class="mt-3 flex items-center justify-between text-[11px] text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200/60 font-mono">
+            <span>Index Engine: FAISS-CPU (Cosine / L2)</span>
+            <span id="statIndexStatus" class="font-semibold text-slate-600">Unindexed</span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Main Navigation Tabs -->
+    <div class="flex items-center justify-between border-b border-slate-200">
+      <nav class="flex space-x-2 sm:space-x-4" aria-label="Tabs">
+        <button onclick="switchTab('chat')" id="tabBtn-chat" class="tab-btn active inline-flex items-center gap-2 py-3 px-3 text-sm font-semibold border-b-2 border-brand-600 text-brand-600">
+          <i data-lucide="messages-square" class="w-4 h-4"></i>
+          <span>Grounded Chat</span>
+        </button>
+
+        <button onclick="switchTab('inspector')" id="tabBtn-inspector" class="tab-btn inline-flex items-center gap-2 py-3 px-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300">
+          <i data-lucide="layers" class="w-4 h-4"></i>
+          <span>Vector Chunk Inspector</span>
+          <span id="tabChunksCount" class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600">0</span>
+        </button>
+
+        <button onclick="switchTab('summary')" id="tabBtn-summary" class="tab-btn inline-flex items-center gap-2 py-3 px-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300">
+          <i data-lucide="file-text" class="w-4 h-4"></i>
+          <span>Executive Synthesis & PDF</span>
+        </button>
+      </nav>
+
+      <div class="hidden sm:flex items-center gap-2 text-xs text-slate-500">
+        <i data-lucide="shield-check" class="w-4 h-4 text-emerald-600"></i>
+        <span>Strict Hallucination Guardrails</span>
+      </div>
+    </div>
+
+    <!-- TAB 1: GROUNDED CHAT -->
+    <section id="tab-chat" class="tab-content space-y-4">
+      
+      <!-- Dynamic Suggested Starter Questions Strip -->
+      <div id="suggestedPromptsContainer" class="hidden bg-brand-50/50 border border-brand-100 rounded-xl p-3 fade-in">
+        <div class="flex items-center gap-2 mb-2">
+          <i data-lucide="lightbulb" class="w-3.5 h-3.5 text-brand-600"></i>
+          <span class="text-xs font-semibold text-brand-900 uppercase tracking-wider">Suggested Starter Prompts</span>
+        </div>
+        <div id="suggestedPromptsList" class="flex flex-wrap gap-2"></div>
+      </div>
+
+      <!-- Messages Thread Box -->
+      <div id="chatMessages" class="bg-white rounded-2xl border border-slate-200 p-5 min-h-[460px] max-h-[620px] overflow-y-auto space-y-5 shadow-xs">
+        
+        <!-- Welcome empty state -->
+        <div id="chatEmptyState" class="h-80 flex flex-col items-center justify-center text-center p-6 space-y-3 text-slate-500">
+          <div class="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400">
+            <i data-lucide="message-square-text" class="w-7 h-7"></i>
+          </div>
+          <div>
+            <h4 class="font-semibold text-slate-800">Knowledge Base Ready For Queries</h4>
+            <p class="text-xs text-slate-500 max-w-md mt-1">
+              Upload PDF documents above to build vector embeddings, then ask questions. Answers cite source document filenames and exact 1-indexed page numbers.
+            </p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Chat Input Area -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-3 shadow-sm">
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-end gap-3">
+          
+          <div class="flex-1">
+            <textarea
+              id="queryInput"
+              rows="2"
+              placeholder="Ask a question about the uploaded document(s)... (Shift+Enter for new line)"
+              class="w-full resize-none border-0 focus:ring-0 p-2 text-sm text-slate-900 placeholder:text-slate-400 outline-none"
+              onkeydown="handleTextareaKeyDown(event)"
+            ></textarea>
+          </div>
+
+          <!-- Controls: Top-K & Send -->
+          <div class="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+            
+            <div class="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs">
+              <span class="text-slate-500 font-medium">Top-k Chunks:</span>
+              <select id="topKSelect" class="bg-transparent font-semibold text-slate-700 outline-none cursor-pointer">
+                <option value="3" selected>3</option>
+                <option value="5">5</option>
+                <option value="8">8</option>
+              </select>
+            </div>
+
+            <button
+              id="sendQueryBtn"
+              onclick="handleSendQuery()"
+              class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 shadow-sm shadow-brand-500/25 transition disabled:opacity-50"
+            >
+              <span>Ask Engine</span>
+              <i data-lucide="send" class="w-3.5 h-3.5"></i>
+            </button>
+
+          </div>
+
+        </div>
+      </div>
+
+    </section>
+
+    <!-- TAB 2: VECTOR CHUNK INSPECTOR -->
+    <section id="tab-inspector" class="tab-content hidden space-y-4">
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
+        
+        <!-- Inspector Top Header & Filter -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+              <i data-lucide="database" class="w-4 h-4 text-brand-600"></i>
+              Vector Chunk Inspector
+            </h3>
+            <p class="text-xs text-slate-500 mt-0.5">
+              Live inspection of indexed semantic passages (1000 character chunks with 200 character sliding overlap).
+            </p>
+          </div>
+
+          <!-- Search Filter in Chunks -->
+          <div class="relative w-full sm:w-72">
+            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i>
+            <input
+              type="text"
+              id="chunkSearchInput"
+              oninput="filterChunkCards()"
+              placeholder="Filter chunks by keyword..."
+              class="w-full pl-9 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-brand-500 bg-slate-50/50"
+            />
+          </div>
+        </div>
+
+        <!-- Chunks Grid -->
+        <div id="chunksEmptyState" class="text-center py-16 text-slate-400 space-y-2">
+          <i data-lucide="layers" class="w-10 h-10 mx-auto text-slate-300"></i>
+          <p class="text-xs">No chunks indexed yet. Upload a PDF document in the Knowledge Base above.</p>
+        </div>
+
+        <div id="chunksGrid" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[600px] overflow-y-auto p-1"></div>
+
+        <!-- Inspector Pagination Bar -->
+        <div id="chunkPagination" class="hidden flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-500">
+          <span id="chunkRangeText">Showing 1-20 of 0 chunks</span>
+          <div class="flex items-center gap-2">
+            <button id="chunkPrevBtn" onclick="handleChunkPage(-1)" class="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 disabled:opacity-40">Previous</button>
+            <button id="chunkNextBtn" onclick="handleChunkPage(1)" class="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 disabled:opacity-40">Next</button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- TAB 3: EXECUTIVE SUMMARY & PDF EXPORT -->
+    <section id="tab-summary" class="tab-content hidden space-y-4">
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-5">
+        
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div>
+            <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+              <i data-lucide="file-check" class="w-4 h-4 text-brand-600"></i>
+              Executive Document Synthesis & Audit Brief
+            </h3>
+            <p class="text-xs text-slate-500 mt-0.5">
+              Synthesizes multi-document intelligence into a structured executive brief with ReportLab PDF export.
+            </p>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button
+              id="genSummaryBtn"
+              onclick="handleGenerateSummary()"
+              class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 shadow-sm transition disabled:opacity-50"
+            >
+              <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+              <span>Generate Synthesis</span>
+            </button>
+
+            <button
+              id="downloadPdfBtn"
+              onclick="handleDownloadPdf()"
+              disabled
+              class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition disabled:opacity-40"
+            >
+              <i data-lucide="download" class="w-3.5 h-3.5"></i>
+              <span>Download Executive PDF</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Summary Display Content -->
+        <div id="summaryContentContainer" class="bg-slate-50/80 rounded-xl p-5 border border-slate-200/80 min-h-[350px]">
+          <div id="summaryEmptyPrompt" class="text-center py-20 text-slate-400 space-y-2">
+            <i data-lucide="file-text" class="w-10 h-10 mx-auto text-slate-300"></i>
+            <p class="text-xs">Click "Generate Synthesis" above to synthesize an executive intelligence briefing.</p>
+          </div>
+          <div id="summaryTextBody" class="hidden text-sm text-slate-800 leading-relaxed space-y-4"></div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Global Toast Notification Container -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition duration-300 pointer-events-none">
+    <div id="toastCard" class="bg-slate-900 text-white text-xs font-medium px-4 py-3 rounded-xl shadow-xl flex items-center gap-2.5">
+      <span id="toastIcon"></span>
+      <span id="toastMessage"></span>
+    </div>
+  </div>
+
+  <!-- Client-side Application Logic -->
+  <script>
+    // State management
+    const API_BASE = window.location.origin;
+    let selectedFiles = [];
+    let chatTurns = [];
+    let allChunks = [];
+    let currentChunkOffset = 0;
+    const CHUNK_PAGE_SIZE = 20;
+    let currentExecutiveSummary = "";
+
+    // Initialize Lucide icons
+    document.addEventListener("DOMContentLoaded", () => {
+      lucide.createIcons();
+      refreshIndexStatus();
+      setupDropzone();
+    });
+
+    // Tab switcher
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active', 'border-brand-600', 'text-brand-600');
+        btn.classList.add('border-transparent', 'text-slate-500');
+      });
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+
+      const activeBtn = document.getElementById(`tabBtn-${tabName}`);
+      const activeContent = document.getElementById(`tab-${tabName}`);
+      if (activeBtn && activeContent) {
+        activeBtn.classList.add('active', 'border-brand-600', 'text-brand-600');
+        activeBtn.classList.remove('border-transparent', 'text-slate-500');
+        activeContent.classList.remove('hidden');
+      }
+
+      if (tabName === 'inspector') {
+        loadChunks(0);
+      }
+      lucide.createIcons();
+    }
+
+    // Toast alert helper
+    function showToast(message, type = "info") {
+      const toast = document.getElementById("toast");
+      const toastMessage = document.getElementById("toastMessage");
+      const toastCard = document.getElementById("toastCard");
+
+      toastMessage.textContent = message;
+      if (type === "success") {
+        toastCard.className = "bg-emerald-800 text-white text-xs font-medium px-4 py-3 rounded-xl shadow-xl flex items-center gap-2.5";
+      } else if (type === "error") {
+        toastCard.className = "bg-rose-900 text-white text-xs font-medium px-4 py-3 rounded-xl shadow-xl flex items-center gap-2.5";
+      } else {
+        toastCard.className = "bg-slate-900 text-white text-xs font-medium px-4 py-3 rounded-xl shadow-xl flex items-center gap-2.5";
+      }
+
+      toast.classList.remove("translate-y-20", "opacity-0", "pointer-events-none");
+      setTimeout(() => {
+        toast.classList.add("translate-y-20", "opacity-0", "pointer-events-none");
+      }, 3500);
+    }
+
+    // Dropzone setup
+    function setupDropzone() {
+      const dropzone = document.getElementById("dropzone");
+      const fileInput = document.getElementById("fileInput");
+
+      dropzone.addEventListener("click", () => fileInput.click());
+      dropzone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropzone.classList.add("border-brand-500", "bg-brand-50/30");
+      });
+      dropzone.addEventListener("dragleave", () => {
+        dropzone.classList.remove("border-brand-500", "bg-brand-50/30");
+      });
+      dropzone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropzone.classList.remove("border-brand-500", "bg-brand-50/30");
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          handleFilesSelected(e.dataTransfer.files);
+        }
+      });
+
+      fileInput.addEventListener("change", (e) => {
+        if (e.target.files && e.target.files.length > 0) {
+          handleFilesSelected(e.target.files);
+        }
+      });
+    }
+
+    function handleFilesSelected(files) {
+      const validFiles = Array.from(files).filter(f => f.name.toLowerCase().endsWith(".pdf"));
+      if (validFiles.length === 0) {
+        showToast("Please select valid PDF documents.", "error");
+        return;
+      }
+
+      selectedFiles = validFiles;
+      renderSelectedFiles();
+    }
+
+    function renderSelectedFiles() {
+      const container = document.getElementById("selectedFilesContainer");
+      const list = document.getElementById("selectedFilesList");
+      const countText = document.getElementById("selectedCountText");
+
+      if (selectedFiles.length === 0) {
+        container.classList.add("hidden");
+        return;
+      }
+
+      container.classList.remove("hidden");
+      countText.textContent = `${selectedFiles.length} file(s) ready to index`;
+
+      list.innerHTML = selectedFiles.map((file, idx) => `
+        <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-xs font-medium text-slate-700 shadow-2xs">
+          <i data-lucide="file" class="w-3.5 h-3.5 text-brand-600"></i>
+          <span class="truncate max-w-[140px]">${file.name}</span>
+          <span class="text-[10px] text-slate-400 font-mono">${(file.size / 1024).toFixed(0)} KB</span>
+          <button onclick="removeSelectedFile(${idx})" class="text-slate-400 hover:text-rose-500">
+            <i data-lucide="x" class="w-3 h-3"></i>
+          </button>
+        </div>
+      `).join("");
+
+      lucide.createIcons();
+    }
+
+    function removeSelectedFile(idx) {
+      selectedFiles.splice(idx, 1);
+      renderSelectedFiles();
+    }
+
+    // Refresh Index Status
+    async function refreshIndexStatus() {
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/status`);
+        if (!res.ok) return;
+        const data = await res.json();
+
+        document.getElementById("statDocs").textContent = data.document_count;
+        document.getElementById("statPages").textContent = data.total_pages;
+        document.getElementById("statChunks").textContent = data.total_chunks;
+        document.getElementById("tabChunksCount").textContent = data.total_chunks;
+
+        const statusPill = document.getElementById("statIndexStatus");
+        if (data.is_indexed) {
+          statusPill.textContent = "Indexed (RAM)";
+          statusPill.className = "font-semibold text-emerald-600";
+        } else {
+          statusPill.textContent = "Unindexed";
+          statusPill.className = "font-semibold text-slate-500";
+        }
+      } catch (err) {
+        console.error("Failed to fetch status:", err);
+      }
+    }
+
+    // Upload and Index documents
+    async function handleUploadSubmit() {
+      if (selectedFiles.length === 0) return;
+
+      const uploadBtn = document.getElementById("uploadSubmitBtn");
+      const btnText = document.getElementById("uploadBtnText");
+      uploadBtn.disabled = true;
+      btnText.textContent = "Extracting & Embedding...";
+
+      const formData = new FormData();
+      selectedFiles.forEach(f => formData.append("files", f));
+
+      const startTime = performance.now();
+
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/upload`, {
+          method: "POST",
+          body: formData,
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.detail || "Failed to process files");
+        }
+
+        const elapsed = Math.round(performance.now() - startTime);
+        showToast(`Indexed ${data.total_chunks} vector chunks in ${data.process_time_ms}ms!`, "success");
+
+        // Populate suggested starter questions
+        if (data.suggested_prompts && data.suggested_prompts.length > 0) {
+          renderSuggestedPrompts(data.suggested_prompts);
+        }
+
+        // Reset selected files and refresh status
+        selectedFiles = [];
+        renderSelectedFiles();
+        await refreshIndexStatus();
+      } catch (err) {
+        showToast(err.message, "error");
+      } finally {
+        uploadBtn.disabled = false;
+        btnText.textContent = "Process & Index Chunks";
+      }
+    }
+
+    // Render suggested starter questions
+    function renderSuggestedPrompts(prompts) {
+      const container = document.getElementById("suggestedPromptsContainer");
+      const list = document.getElementById("suggestedPromptsList");
+
+      container.classList.remove("hidden");
+      list.innerHTML = prompts.map(p => `
+        <button onclick="applySuggestedPrompt('${p.replace(/'/g, "\\'")}')" class="text-left text-xs bg-white hover:bg-brand-50 hover:text-brand-700 text-slate-700 px-3 py-1.5 rounded-lg border border-brand-200/80 transition shadow-2xs flex items-center gap-1.5">
+          <i data-lucide="corner-down-right" class="w-3 h-3 text-brand-500"></i>
+          <span>${p}</span>
+        </button>
+      `).join("");
+      lucide.createIcons();
+    }
+
+    function applySuggestedPrompt(text) {
+      document.getElementById("queryInput").value = text;
+      handleSendQuery();
+    }
+
+    function handleTextareaKeyDown(e) {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        handleSendQuery();
+      }
+    }
+
+    // Grounded Query
+    async function handleSendQuery() {
+      const queryInput = document.getElementById("queryInput");
+      const question = queryInput.value.trim();
+      if (!question) return;
+
+      const topK = parseInt(document.getElementById("topKSelect").value) || 3;
+      const sendBtn = document.getElementById("sendQueryBtn");
+      sendBtn.disabled = true;
+      queryInput.value = "";
+
+      // Hide empty state if first question
+      const emptyState = document.getElementById("chatEmptyState");
+      if (emptyState) emptyState.remove();
+
+      // Append user message
+      appendUserMessage(question);
+
+      // Append loading indicator bubble
+      const loadingId = "loading-" + Date.now();
+      appendAssistantLoading(loadingId);
+
+      try {
+        const payload = {
+          question: question,
+          chat_history: chatTurns,
+          top_k: topK,
+        };
+
+        const res = await fetch(`${API_BASE}/api/v1/query`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.detail || "Query failed");
+        }
+
+        // Replace loading indicator with real response
+        removeLoadingBubble(loadingId);
+        appendAssistantMessage(data);
+
+        // Record history turn
+        chatTurns.push({ role: "user", content: question });
+        chatTurns.push({ role: "assistant", content: data.answer });
+
+      } catch (err) {
+        removeLoadingBubble(loadingId);
+        appendErrorMessage(err.message);
+      } finally {
+        sendBtn.disabled = false;
+        queryInput.focus();
+      }
+    }
+
+    function appendUserMessage(text) {
+      const chat = document.getElementById("chatMessages");
+      const div = document.createElement("div");
+      div.className = "flex justify-end fade-in";
+      div.innerHTML = `
+        <div class="max-w-2xl bg-brand-600 text-white rounded-2xl rounded-tr-xs px-4 py-3 text-sm shadow-sm leading-relaxed">
+          <p class="whitespace-pre-wrap">${escapeHtml(text)}</p>
+        </div>
+      `;
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function appendAssistantLoading(id) {
+      const chat = document.getElementById("chatMessages");
+      const div = document.createElement("div");
+      div.id = id;
+      div.className = "flex items-start gap-3 fade-in";
+      div.innerHTML = `
+        <div class="w-8 h-8 rounded-xl bg-brand-100 text-brand-700 flex items-center justify-center shrink-0 mt-0.5">
+          <i data-lucide="sparkles" class="w-4 h-4"></i>
+        </div>
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl rounded-tl-xs px-4 py-3 text-xs text-slate-500 flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-brand-600 animate-ping"></span>
+          <span>Searching FAISS vector space & synthesizing grounded response...</span>
+        </div>
+      `;
+      chat.appendChild(div);
+      lucide.createIcons();
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function removeLoadingBubble(id) {
+      const el = document.getElementById(id);
+      if (el) el.remove();
+    }
+
+    function appendAssistantMessage(data) {
+      const chat = document.getElementById("chatMessages");
+      const div = document.createElement("div");
+      div.className = "flex items-start gap-3 fade-in";
+
+      // Confidence badge styling
+      let confBadgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
+      if (data.confidence_label.includes("Medium")) {
+        confBadgeClass = "bg-amber-50 text-amber-700 border-amber-200";
+      } else if (data.confidence_label.includes("Low")) {
+        confBadgeClass = "bg-rose-50 text-rose-700 border-rose-200";
+      }
+
+      // Citations HTML
+      const citationsHtml = data.sources && data.sources.length > 0 ? `
+        <div class="mt-3 pt-3 border-t border-slate-100">
+          <details class="group">
+            <summary class="cursor-pointer text-xs font-semibold text-slate-500 hover:text-brand-600 flex items-center gap-1 select-none">
+              <i data-lucide="chevron-right" class="w-3.5 h-3.5 transition group-open:rotate-90"></i>
+              <span>View Grounded Citations (${data.sources.length} sources)</span>
+            </summary>
+            <div class="mt-2 space-y-2 pl-4">
+              ${data.sources.map((s, idx) => `
+                <div class="bg-white p-2.5 rounded-lg border border-slate-200 text-xs space-y-1">
+                  <div class="flex items-center justify-between font-mono text-[11px] text-slate-600">
+                    <span class="font-semibold text-brand-700">${escapeHtml(s.document_name)}</span>
+                    <span class="px-1.5 py-0.5 rounded bg-slate-100 font-semibold">Page ${s.page_number}</span>
+                  </div>
+                  <p class="text-slate-600 leading-snug text-[11px] italic bg-slate-50 p-1.5 rounded">"${escapeHtml(s.snippet)}"</p>
+                  <div class="text-[10px] text-slate-400 font-mono flex justify-between pt-0.5">
+                    <span>L2 Distance: ${s.distance_score}</span>
+                    <span>Relevance: ${(s.relevance_score * 100).toFixed(0)}%</span>
+                  </div>
+                </div>
+              `).join("")}
+            </div>
+          </details>
+        </div>
+      ` : "";
+
+      div.innerHTML = `
+        <div class="w-8 h-8 rounded-xl bg-brand-50 border border-brand-200 text-brand-700 flex items-center justify-center shrink-0 mt-0.5">
+          <i data-lucide="bot" class="w-4 h-4"></i>
+        </div>
+        <div class="flex-1 bg-white border border-slate-200 rounded-2xl rounded-tl-xs p-4 shadow-xs space-y-2">
+          
+          <!-- Metrics header bar -->
+          <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-100 text-xs">
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded-full border text-[11px] font-medium ${confBadgeClass}">
+                ● ${data.confidence_label}
+              </span>
+              <span class="text-[11px] text-slate-400 font-mono">Distance: ${data.confidence_score}</span>
+
+            </div>
+            <span class="text-[11px] text-slate-400 font-mono">⚡ ${data.latency_ms}ms</span>
+          </div>
+
+          <!-- Answer Body -->
+          <div class="text-sm text-slate-800 leading-relaxed formatted-markdown">
+            ${formatResponseText(data.answer)}
+          </div>
+
+          <!-- Citations section -->
+          ${citationsHtml}
+        </div>
+      `;
+
+      chat.appendChild(div);
+      lucide.createIcons();
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function appendErrorMessage(msg) {
+      const chat = document.getElementById("chatMessages");
+      const div = document.createElement("div");
+      div.className = "flex items-start gap-3 fade-in";
+      div.innerHTML = `
+        <div class="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 mt-0.5">
+          <i data-lucide="alert-circle" class="w-4 h-4"></i>
+        </div>
+        <div class="bg-rose-50 border border-rose-200 rounded-2xl rounded-tl-xs p-4 text-xs text-rose-700">
+          <p class="font-semibold">Query Error</p>
+          <p class="mt-0.5">${escapeHtml(msg)}</p>
+        </div>
+      `;
+      chat.appendChild(div);
+      lucide.createIcons();
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    // Simple markdown formatting helper for chat responses
+    function formatResponseText(text) {
+      let html = escapeHtml(text);
+      // bold
+      html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      // italic
+      html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+      // bullet points
+      html = html.replace(/^[•\-*]\s+(.*)$/gm, '<li class="ml-4 list-disc">$1</li>');
+      // line breaks
+      html = html.replace(/\n\n/g, '<br/><br/>').replace(/\n/g, '<br/>');
+      return html;
+    }
+
+    function escapeHtml(str) {
+      return (str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    // TAB 2: CHUNK INSPECTOR LOGIC
+    async function loadChunks(offset = 0) {
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/chunks?limit=${CHUNK_PAGE_SIZE}&offset=${offset}`);
+        if (!res.ok) return;
+        const data = await res.json();
+
+        allChunks = data.chunks;
+        currentChunkOffset = offset;
+
+        const emptyState = document.getElementById("chunksEmptyState");
+        const grid = document.getElementById("chunksGrid");
+        const pagination = document.getElementById("chunkPagination");
+
+        if (data.total_chunks === 0) {
+          emptyState.classList.remove("hidden");
+          grid.classList.add("hidden");
+          pagination.classList.add("hidden");
+          return;
+        }
+
+        emptyState.classList.add("hidden");
+        grid.classList.remove("hidden");
+        pagination.classList.remove("hidden");
+
+        renderChunkCards(allChunks);
+
+        const rangeStart = offset + 1;
+        const rangeEnd = Math.min(offset + allChunks.length, data.total_chunks);
+        document.getElementById("chunkRangeText").textContent = `Showing ${rangeStart}-${rangeEnd} of ${data.total_chunks} chunks`;
+
+        document.getElementById("chunkPrevBtn").disabled = offset === 0;
+        document.getElementById("chunkNextBtn").disabled = offset + CHUNK_PAGE_SIZE >= data.total_chunks;
+
+      } catch (err) {
+        console.error("Failed to load chunks:", err);
+      }
+    }
+
+    function renderChunkCards(chunks) {
+      const grid = document.getElementById("chunksGrid");
+      grid.innerHTML = chunks.map(chunk => `
+        <div class="chunk-card bg-slate-50 hover:bg-white border border-slate-200 hover:border-brand-300 rounded-xl p-3.5 transition shadow-2xs space-y-2">
+          <div class="flex items-center justify-between text-xs pb-1.5 border-b border-slate-200/60">
+            <span class="font-bold text-brand-700 font-mono">#Chunk ${chunk.chunk_id}</span>
+            <div class="flex items-center gap-1.5">
+              <span class="px-1.5 py-0.5 rounded bg-white border border-slate-200 text-[10px] font-medium text-slate-600">${escapeHtml(chunk.document_name)}</span>
+              <span class="px-1.5 py-0.5 rounded bg-brand-50 text-[10px] font-bold text-brand-700">p. ${chunk.page_number}</span>
+            </div>
+          </div>
+          <p class="text-xs text-slate-700 font-mono leading-relaxed line-clamp-4 hover:line-clamp-none transition">
+            ${escapeHtml(chunk.snippet)}
+          </p>
+          <div class="text-[10px] text-slate-400 font-mono pt-1 text-right">
+            ${chunk.char_count} characters
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function filterChunkCards() {
+      const q = document.getElementById("chunkSearchInput").value.toLowerCase();
+      const filtered = allChunks.filter(c => 
+        c.snippet.toLowerCase().includes(q) || c.document_name.toLowerCase().includes(q)
+      );
+      renderChunkCards(filtered);
+    }
+
+    function handleChunkPage(dir) {
+      const nextOffset = Math.max(0, currentChunkOffset + (dir * CHUNK_PAGE_SIZE));
+      loadChunks(nextOffset);
+    }
+
+    // TAB 3: EXECUTIVE SUMMARY & PDF EXPORT
+    async function handleGenerateSummary() {
+      const genBtn = document.getElementById("genSummaryBtn");
+      const emptyPrompt = document.getElementById("summaryEmptyPrompt");
+      const textBody = document.getElementById("summaryTextBody");
+      const downloadBtn = document.getElementById("downloadPdfBtn");
+
+      genBtn.disabled = true;
+      genBtn.innerHTML = `<span class="w-3 h-3 rounded-full bg-white animate-spin border-2 border-white border-t-transparent inline-block mr-1"></span> Synthesizing...`;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/summarize`, { method: "POST" });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Failed to generate summary");
+
+        currentExecutiveSummary = data.summary;
+        emptyPrompt.classList.add("hidden");
+        textBody.classList.remove("hidden");
+        textBody.innerHTML = formatResponseText(data.summary);
+        downloadBtn.disabled = false;
+
+        showToast(`Executive Briefing generated in ${data.latency_ms}ms!`, "success");
+      } catch (err) {
+        showToast(err.message, "error");
+      } finally {
+        genBtn.disabled = false;
+        genBtn.innerHTML = `<i data-lucide="sparkles" class="w-3.5 h-3.5"></i><span>Generate Synthesis</span>`;
+        lucide.createIcons();
+      }
+    }
+
+    async function handleDownloadPdf() {
+      const downloadBtn = document.getElementById("downloadPdfBtn");
+      downloadBtn.disabled = true;
+      downloadBtn.innerHTML = `<span class="w-3 h-3 rounded-full bg-slate-700 animate-spin border-2 border-slate-700 border-t-transparent inline-block mr-1"></span> Compiling PDF...`;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/export/pdf`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            summary: currentExecutiveSummary,
+            chat_history: chatTurns,
+          }),
+        });
+
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.detail || "PDF generation failed");
+        }
+
+        const blob = await res.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = downloadUrl;
+        a.download = "DocuMind_Intelligence_Brief.pdf";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(downloadUrl);
+
+        showToast("Executive PDF downloaded successfully!", "success");
+      } catch (err) {
+        showToast(err.message, "error");
+      } finally {
+        downloadBtn.disabled = false;
+        downloadBtn.innerHTML = `<i data-lucide="download" class="w-3.5 h-3.5"></i><span>Download Executive PDF</span>`;
+        lucide.createIcons();
+      }
+    }
+
+    // Clear Index
+    async function handleClearIndex() {
+      if (!confirm("Are you sure you want to clear all indexed vectors and document memory?")) return;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/clear`, { method: "DELETE" });
+        if (!res.ok) throw new Error("Failed to clear index");
+
+        showToast("Corpus and vector index cleared.", "info");
+        await refreshIndexStatus();
+        chatTurns = [];
+        allChunks = [];
+        currentExecutiveSummary = "";
+        document.getElementById("downloadPdfBtn").disabled = true;
+
+        // Reset UI views
+        document.getElementById("chatMessages").innerHTML = `
+          <div id="chatEmptyState" class="h-80 flex flex-col items-center justify-center text-center p-6 space-y-3 text-slate-500">
+            <div class="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400">
+              <i data-lucide="message-square-text" class="w-7 h-7"></i>
+            </div>
+            <div>
+              <h4 class="font-semibold text-slate-800">Knowledge Base Ready For Queries</h4>
+              <p class="text-xs text-slate-500 max-w-md mt-1">
+                Upload PDF documents above to build vector embeddings, then ask questions.
+              </p>
+            </div>
+          </div>
+        `;
+        document.getElementById("suggestedPromptsContainer").classList.add("hidden");
+        document.getElementById("summaryEmptyPrompt").classList.remove("hidden");
+        document.getElementById("summaryTextBody").classList.add("hidden");
+        lucide.createIcons();
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    }
+  </script>
+</body>
+</html>
